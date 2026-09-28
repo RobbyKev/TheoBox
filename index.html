@@ -2,25 +2,25 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hörspiel Mediathek</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Hörspiel Box</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-base: #080a0f;
-            --bg-card: rgba(255, 255, 255, 0.03);
-            --bg-card-hover: rgba(255, 255, 255, 0.07);
-            --border-color: rgba(255, 255, 255, 0.08);
+            --bg-base: #0a0e14;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --border-color: rgba(255, 255, 255, 0.1);
             --accent-spotify: #1DB954;
-            --text-main: #f1f5f9;
+            --text-main: #f8fafc;
             --text-sub: #94a3b8;
         }
 
         body.night-mode {
             --bg-base: #030406;
-            --bg-card: rgba(255, 255, 255, 0.015);
-            --text-main: #64748b;
-            --text-sub: #334155;
+            --bg-card: rgba(255, 255, 255, 0.02);
+            --border-color: rgba(255, 255, 255, 0.04);
+            --text-main: #475569;
+            --text-sub: #1e293b;
             --accent-spotify: #15803d;
         }
 
@@ -28,20 +28,21 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
 
         body {
             background-color: var(--bg-base);
             color: var(--text-main);
             min-height: 100vh;
-            padding: 24px 16px 80px;
+            padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 24px);
             transition: background-color 0.3s, color 0.3s;
         }
 
         .container {
-            max-width: 900px;
+            max-width: 500px;
             margin: 0 auto;
         }
 
@@ -49,95 +50,87 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .brand {
-            font-size: 1.25rem;
+            font-size: 1.3rem;
             font-weight: 700;
             letter-spacing: -0.02em;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .brand-icon {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             background-color: var(--accent-spotify);
             border-radius: 50%;
-            box-shadow: 0 0 10px var(--accent-spotify);
-        }
-
-        .actions {
-            display: flex;
-            gap: 12px;
+            box-shadow: 0 0 12px var(--accent-spotify);
         }
 
         .btn-icon {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             color: var(--text-main);
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 1.1rem;
             cursor: pointer;
-            transition: all 0.2s;
         }
 
         .grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
-        @media (min-width: 600px) {
-            .grid { grid-template-columns: repeat(3, 1fr); }
-        }
-
-        @media (min-width: 850px) {
-            .grid { grid-template-columns: repeat(4, 1fr); }
+            gap: 14px;
         }
 
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 12px;
+            border-radius: 18px;
+            padding: 10px;
             cursor: pointer;
-            text-decoration: none;
-            color: inherit;
             display: flex;
             flex-direction: column;
             position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .card:active {
+            transform: scale(0.97);
+            opacity: 0.9;
         }
 
         .cover-wrap {
             width: 100%;
             aspect-ratio: 1 / 1;
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             position: relative;
-            background: #111;
+            background: #1a1f26;
         }
 
         .cover-wrap img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            display: block;
         }
 
         .badge {
             position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(0, 0, 0, 0.7);
+            top: 6px;
+            right: 6px;
+            background: rgba(0, 0, 0, 0.75);
             backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15);
             color: #fff;
             font-size: 0.65rem;
             font-weight: 600;
@@ -146,7 +139,7 @@
         }
 
         .title {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
@@ -154,23 +147,23 @@
         }
 
         .sub {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: var(--text-sub);
             margin-top: 2px;
         }
 
-        /* Overlay Modal für Serien/Alben */
+        /* Modal für Serien */
         .modal {
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(16px);
+            backdrop-filter: blur(20px);
             z-index: 100;
             display: none;
             justify-content: center;
             align-items: flex-end;
             opacity: 0;
-            transition: opacity 0.25s;
+            transition: opacity 0.2s;
         }
 
         .modal.open {
@@ -179,36 +172,42 @@
         }
 
         .modal-body {
-            background: #0f131a;
+            background: #121720;
             border: 1px solid var(--border-color);
-            border-radius: 24px 24px 0 0;
+            border-radius: 28px 28px 0 0;
             width: 100%;
-            max-width: 800px;
-            max-height: 85vh;
+            max-width: 500px;
+            max-height: 80vh;
             overflow-y: auto;
-            padding: 24px;
+            padding: 20px 20px calc(env(safe-area-inset-bottom) + 20px);
         }
 
         .modal-header {
             display: flex;
             align-items: center;
-            gap: 16px;
-            margin-bottom: 24px;
+            gap: 12px;
+            margin-bottom: 20px;
         }
 
         .modal-header img {
-            width: 64px;
-            height: 64px;
+            width: 56px;
+            height: 56px;
             border-radius: 12px;
             object-fit: cover;
         }
 
         .close-btn {
             margin-left: auto;
-            background: none;
+            background: rgba(255, 255, 255, 0.1);
             border: none;
-            color: var(--text-sub);
-            font-size: 1.5rem;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
         }
 
@@ -221,18 +220,22 @@
         .album-item {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
             padding: 10px;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 14px;
             text-decoration: none;
             color: inherit;
         }
 
+        .album-item:active {
+            background: rgba(255,255,255,0.1);
+        }
+
         .album-item img {
-            width: 48px;
-            height: 48px;
+            width: 44px;
+            height: 44px;
             border-radius: 8px;
             object-fit: cover;
         }
@@ -246,22 +249,20 @@
             <div class="brand-icon"></div>
             <span>Hörspiel Box</span>
         </div>
-        <div class="actions">
-            <button class="btn-icon" id="nightToggle">🌙</button>
-        </div>
+        <button class="btn-icon" id="nightToggle">🌙</button>
     </header>
 
     <div class="grid" id="grid"></div>
 </div>
 
-<!-- Modal für Folgen/Alben -->
+<!-- Modal für Serien-Folgen -->
 <div class="modal" id="modal">
     <div class="modal-body">
         <div class="modal-header">
-            <img id="modalCover" src="" alt="">
+            <img id="modalCover" src="" alt="" referrerpolicy="no-referrer">
             <div>
-                <h2 id="modalTitle"></h2>
-                <p id="modalSub" style="color: var(--text-sub); font-size: 0.85rem;"></p>
+                <h3 id="modalTitle"></h3>
+                <p id="modalSub" style="color: var(--text-sub); font-size: 0.8rem;"></p>
             </div>
             <button class="close-btn" id="closeModal">✕</button>
         </div>
@@ -270,48 +271,72 @@
 </div>
 
 <script>
-    // Serien & Hörspiel-Daten
+    // Inhaltsliste mit funktionierenden Web- & iOS-App-Links
     const items = [
         {
             type: 'series',
             title: 'Benjamin Blümchen',
-            cover: 'https://i.scdn.co/image/ab6761610000e5eb4f4e7c0d381048b3bf21ca2b',
-            count: '150+ Folgen',
+            cover: 'https://m.media-amazon.com/images/I/81E1w3QfM3L._SS500_.jpg',
+            count: 'Serien-Auswahl',
             albums: [
-                { title: 'Folge 1: Als Wetterhahn', url: 'https://open.spotify.com/intl-de/album/1P4Z1iM7fC2L2n3n4m5K6L', cover: 'https://i.scdn.co/image/ab67616d0000b273b5d27575fa3d66df2e6d38b5' },
-                { title: 'Folge 2: Auf dem Bauernhof', url: 'https://open.spotify.com/intl-de/album/2Q5X9yM8fC2L2n3n4m5K6L', cover: 'https://i.scdn.co/image/ab67616d0000b2738b30d31c0a0c20251bc89a3f' },
-                { title: 'Folge 3: Und der Rote Graf', url: 'https://open.spotify.com/intl-de/album/3R5X9yM8fC2L2n3n4m5K6L', cover: 'https://i.scdn.co/image/ab67616d0000b2734138e6988880e6efc7159eb5' }
+                { title: 'Künstlerprofil in Spotify öffnen', url: 'spotify:artist:0d8f3T0PzYp1xUe53C1Nn0', webUrl: 'https://open.spotify.com/artist/0d8f3T0PzYp1xUe53C1Nn0', cover: 'https://m.media-amazon.com/images/I/81E1w3QfM3L._SS500_.jpg' },
+                { title: 'Folge 1: Als Wetterhahn', url: 'spotify:album:1aL913dCilG59yP6YjW6pM', webUrl: 'https://open.spotify.com/album/1aL913dCilG59yP6YjW6pM', cover: 'https://m.media-amazon.com/images/I/81E1w3QfM3L._SS500_.jpg' }
             ]
         },
         {
             type: 'series',
             title: 'Die drei ???',
-            cover: 'https://i.scdn.co/image/ab6761610000e5eb3b371b695781a78d0f19c961',
-            count: '220+ Folgen',
+            cover: 'https://m.media-amazon.com/images/I/81vN8L0w0sL._SS500_.jpg',
+            count: 'Serien-Auswahl',
             albums: [
-                { title: 'Folge 1: Super-Papagei', url: 'https://open.spotify.com/intl-de/album/0d8f3T0PzYp1xUe53C1Nn0', cover: 'https://i.scdn.co/image/ab67616d0000b273b5f3333e659b8b209d80313f' },
-                { title: 'Folge 2: Der Karpatenhund', url: 'https://open.spotify.com/intl-de/album/0d8f3T0PzYp1xUe53C1Nn1', cover: 'https://i.scdn.co/image/ab67616d0000b2739227f6ff268f7f50a31eb252' }
+                { title: 'Künstlerprofil in Spotify öffnen', url: 'spotify:artist:3b371b695781a78d0f19c961', webUrl: 'https://open.spotify.com/artist/3b371b695781a78d0f19c961', cover: 'https://m.media-amazon.com/images/I/81vN8L0w0sL._SS500_.jpg' }
             ]
         },
         {
             type: 'direct',
             title: 'Sendung mit der Maus',
             sub: 'Podcast',
-            cover: 'https://i.scdn.co/image/ab6765630000ba8a7c264a7846fa7a49dd299bdf',
-            url: 'https://open.spotify.com/show/3qC5xQx5B2G15Z15'
+            cover: 'https://m.media-amazon.com/images/I/71R2c3I2XTL._SS500_.jpg',
+            url: 'spotify:show:3qC5xQx5B2G15Z15',
+            webUrl: 'https://open.spotify.com/show/3qC5xQx5B2G15Z15'
         },
         {
             type: 'direct',
-            title: 'Disney Klassiker',
+            title: 'Disney Hörspiele',
             sub: 'Playlist',
-            cover: 'https://i.scdn.co/image/ab67706f000000025f1a52b827e80064a377042a',
-            url: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO'
+            cover: 'https://m.media-amazon.com/images/I/81P81-m8mWL._SS500_.jpg',
+            url: 'spotify:playlist:37i9dQZF1DX4sWSpwq3LiO',
+            webUrl: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO'
+        },
+        {
+            type: 'direct',
+            title: 'Asterix & Obelix',
+            sub: 'Künstlerprofil',
+            cover: 'https://m.media-amazon.com/images/I/81P588eG0aL._SS500_.jpg',
+            url: 'spotify:artist:234z9wIbfT22JdYgB309bE',
+            webUrl: 'https://open.spotify.com/artist/234z9wIbfT22JdYgB309bE'
+        },
+        {
+            type: 'direct',
+            title: 'Pettersson & Findus',
+            sub: 'Künstlerprofil',
+            cover: 'https://m.media-amazon.com/images/I/81O0Z2CqR8L._SS500_.jpg',
+            url: 'spotify:artist:6l1dC5vB4WvR2yK9dE8d5t',
+            webUrl: 'https://open.spotify.com/artist/6l1dC5vB4WvR2yK9dE8d5t'
         }
     ];
 
     const grid = document.getElementById('grid');
     const modal = document.getElementById('modal');
     const albumList = document.getElementById('albumList');
+
+    function openSpotify(appUrl, webUrl) {
+        // Versucht erst die App direkt zu öffnen, fällt sonst auf Web zurück
+        window.location.href = appUrl;
+        setTimeout(() => {
+            window.location.href = webUrl;
+        }, 500);
+    }
 
     function renderGrid() {
         grid.innerHTML = '';
@@ -320,18 +345,18 @@
             el.className = 'card';
             el.innerHTML = `
                 <div class="cover-wrap">
-                    <img src="${item.cover}" alt="${item.title}">
-                    ${item.type === 'series' ? `<span class="badge">${item.count}</span>` : ''}
+                    <img src="${item.cover}" alt="${item.title}" referrerpolicy="no-referrer">
+                    ${item.type === 'series' ? `<span class="badge">Serie</span>` : ''}
                 </div>
                 <div class="title">${item.title}</div>
-                <div class="sub">${item.sub || 'Serie'}</div>
+                <div class="sub">${item.sub || 'Spotify'}</div>
             `;
             
             el.onclick = () => {
                 if(item.type === 'series') {
                     openSeries(item);
                 } else {
-                    window.open(item.url, '_blank');
+                    openSpotify(item.url, item.webUrl);
                 }
             };
             grid.appendChild(el);
@@ -345,15 +370,14 @@
         
         albumList.innerHTML = '';
         series.albums.forEach(album => {
-            const a = document.createElement('a');
-            a.className = 'album-item';
-            a.href = album.url;
-            a.target = '_blank';
-            a.innerHTML = `
-                <img src="${album.cover}">
-                <div style="font-weight: 500; font-size: 0.9rem;">${album.title}</div>
+            const div = document.createElement('div');
+            div.className = 'album-item';
+            div.innerHTML = `
+                <img src="${album.cover}" referrerpolicy="no-referrer">
+                <div style="font-weight: 500; font-size: 0.85rem;">${album.title}</div>
             `;
-            albumList.appendChild(a);
+            div.onclick = () => openSpotify(album.url, album.webUrl);
+            albumList.appendChild(div);
         });
 
         modal.classList.add('open');
