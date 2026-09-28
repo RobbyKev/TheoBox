@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="de" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Box — Minimalist Hörspiel Mediathek</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        spotify: '#1DB954',
+                        'spotify-hover': '#1ed760',
+                        dark: {
+                            base: '#080b0e',
+                            surface: '#11161d',
+                            card: '#161d26',
+                            border: '#222b37',
+                            hover: '#1e2734'
+                        }
+                    },
+                    boxShadow: {
+                        'glow-spotify': '0 0 25px -5px rgba(29, 185, 84, 0.35)',
+                        'glow-soft': '0 8px 32px 0 rgba(0, 0, 0, 0.4)',
+                        'card-hover': '0 12px 30px -10px rgba(0, 0, 0, 0.6)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #080b0e;
+            color: #f1f5f9;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Glassmorphism elements */
+        .glass-panel {
+            background: rgba(17, 22, 29, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card {
+            background: rgba(22, 29, 38, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(29, 185, 84, 0.4);
+            background: rgba(26, 35, 46, 0.85);
+        }
+
+        /* Bedtime low-brightness warm mode */
+        body.night-light {
+            background-color: #030406 !important;
+            filter: brightness(0.7) contrast(1.05);
+        }
+        
+        body.night-light .glass-panel,
+        body.night-light .glass-card {
+            background: rgba(10, 13, 18, 0.85) !important;
+            border-color: rgba(255, 255, 255, 0.03) !important;
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1DB954;
+            border-radius: 99px;
+        }
+    </style>
+</head>
+
+<body class="min-h-full flex flex-col antialiased selection:bg-spotify selection:text-black">
+
+    <header class="sticky top-0 z-40 glass-panel border-b border-white/5 px-4 sm:px-8 py-4 transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3 cursor-pointer group" onclick="resetSearchAndFilter()">
+                <div class="w-10 h-10 rounded-2xl bg-spotify text-slate-950 flex items-center justify-center text-xl font-black shadow-glow-spotify transform group-hover:scale-105 transition duration-300">
+                    <i class="fa-solid fa-play text-slate-950 ml-0.5 text-base"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        AudioBox
+                        <span class="w-2 h-2 rounded-full bg-spotify animate-pulse"></span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400 font-medium tracking-wide">Minimal Audio Library</p>
+                </div>
+            </div>
+
+            <!-- Search Input (Minimalist) -->
+            <div class="relative flex-1 max-w-sm hidden md:block">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Suchen..." 
+                       class="w-full pl-9 pr-4 py-2 bg-dark-card/80 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-spotify/60 focus:bg-dark-card transition">
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Night Mode Button -->
+                <button id="nightBtn" onclick="toggleNightLight()" title="Einschlaf-Modus" 
+                        class="p-2.5 sm:px-3 sm:py-2 bg-dark-card hover:bg-dark-hover text-slate-300 border border-white/10 rounded-xl text-xs font-semibold flex items-center gap-2 transition">
+                    <i id="nightIcon" class="fa-solid fa-moon text-amber-300"></i>
+                    <span class="hidden sm:inline" id="nightText">Nacht</span>
+                </button>
+
+                <!-- Add Button -->
+                <button onclick="openAddModal()" 
+                        class="px-3.5 py-2 bg-spotify hover:bg-spotify-hover text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 shadow-glow-spotify transition transform hover:scale-[1.02] active:scale-95">
+                    <i class="fa-solid fa-plus text-sm"></i>
+                    <span class="hidden sm:inline">Hinzufügen</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-8 py-6">
+        
+        <!-- Mobile Search (shown only on small screens) -->
+        <div class="relative w-full mb-6 md:hidden">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+            <input type="text" id="searchInputMobile" oninput="handleSearchMobile()" placeholder="Suchen..." 
+                   class="w-full pl-9 pr-4 py-2.5 bg-dark-card border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-spotify/60">
+        </div>
+
+        <!-- Filter Chips -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-4 mb-6 no-scrollbar" id="categoryContainer">
+            <button onclick="filterCategory('all')" data-cat="all" class="cat-chip px-4 py-2 rounded-xl font-semibold text-xs bg-spotify text-slate-950 transition shrink-0">
+                Alle (<span id="count-all">0</span>)
+            </button>
+            <button onclick="filterCategory('hoerspiel')" data-cat="hoerspiel" class="cat-chip px-4 py-2 rounded-xl font-semibold text-xs bg-dark-card text-slate-300 hover:text-white border border-white/5 transition shrink-0">
+                Hörspiele
+            </button>
+            <button onclick="filterCategory('podcast')" data-cat="podcast" class="cat-chip px-4 py-2 rounded-xl font-semibold text-xs bg-dark-card text-slate-300 hover:text-white border border-white/5 transition shrink-0">
+                Podcasts
+            </button>
+            <button onclick="filterCategory('einschlafen')" data-cat="einschlafen" class="cat-chip px-4 py-2 rounded-xl font-semibold text-xs bg-dark-card text-slate-300 hover:text-white border border-white/5 transition shrink-0">
+                Einschlafen
+            </button>
+            <button onclick="filterCategory('musik')" data-cat="musik" class="cat-chip px-4 py-2 rounded-xl font-semibold text-xs bg-dark-card text-slate-300 hover:text-white border border-white/5 transition shrink-0">
+                Musik
+            </button>
+        </div>
+
+        <!-- Audio Grid -->
+        <div id="cardsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+            <!-- Dynamic Content -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-20">
+            <div class="w-16 h-16 mx-auto bg-dark-card border border-white/10 rounded-2xl flex items-center justify-center text-slate-500 text-2xl mb-4">
+                <i class="fa-solid fa-compact-disc"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-200">Keine Inhalte gefunden</h3>
+            <p class="text-xs text-slate-500 mt-1 mb-4">Füge dein erstes Hörspiel per Spotify Link hinzu.</p>
+            <button onclick="resetSearchAndFilter()" class="px-4 py-2 bg-dark-card border border-white/10 text-xs font-semibold rounded-xl text-slate-300 hover:text-white transition">Alle anzeigen</button>
+        </div>
+    </main>
+
+    <div id="playerDrawer" class="fixed bottom-0 inset-x-0 z-50 transform translate-y-full transition-transform duration-300 ease-out glass-panel border-t border-white/10 shadow-glow-soft p-4 sm:p-5">
+        <div class="max-w-4xl mx-auto flex flex-col gap-3">
+            
+            <!-- Drawer Header -->
+            <div class="flex items-center justify-between pb-1">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div id="playerCoverThumb" class="w-10 h-10 rounded-lg bg-dark-card bg-cover bg-center shrink-0 border border-white/10"></div>
+                    <div class="truncate">
+                        <h4 id="playerTitle" class="font-bold text-sm truncate text-white leading-tight">Audio wählen</h4>
+                        <p id="playerSubtitle" class="text-[11px] text-slate-400 truncate">Spotify Player</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <!-- Open directly in Spotify App -->
+                    <a id="externalSpotifyLink" href="#" target="_blank" rel="noopener" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-spotify/10 hover:bg-spotify/20 text-spotify rounded-lg text-xs font-semibold transition">
+                        <i class="fa-brands fa-spotify"></i>
+                        <span>App öffnen</span>
+                    </a>
+
+                    <!-- Close Player -->
+                    <button onclick="closePlayer()" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-full transition">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Spotify Embed Iframe Container -->
+            <div id="iframeContainer" class="w-full bg-slate-950 rounded-xl overflow-hidden h-[152px]">
+                <div class="flex items-center justify-center h-full text-slate-500 text-xs gap-2">
+                    <i class="fa-solid fa-circle-notch animate-spin text-spotify"></i>
+                    <span>Lade Player...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="addModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-6 border border-white/10 shadow-2xl transform scale-95 transition-transform duration-200 relative">
+            
+            <button onclick="closeAddModal()" class="absolute top-4 right-4 w-7 h-7 flex items-center justify-center bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-full transition">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-9 h-9 rounded-xl bg-spotify/20 text-spotify flex items-center justify-center text-lg">
+                    <i class="fa-brands fa-spotify"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-white">Audio hinzufügen</h2>
+                    <p class="text-[11px] text-slate-400">Spotify Link einfügen – den Rest erledigen wir automatisch.</p>
+                </div>
+            </div>
+
+            <form id="addForm" onsubmit="handleSaveItem(event)" class="space-y-4">
+                <!-- Spotify URL Input -->
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                        Spotify URL <span class="text-spotify">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="url" id="spotifyUrlInput" required 
+                               placeholder="https://open.spotify.com/album/..." 
+                               oninput="handleUrlInputChange(this.value)"
+                               class="w-full px-3.5 py-2.5 bg-dark-surface border border-white/10 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-spotify transition">
+                        <div id="fetchSpinner" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-spotify text-xs">
+                            <i class="fa-solid fa-circle-notch animate-spin"></i>
+                        </div>
+                    </div>
+                    <p id="fetchStatusText" class="text-[10px] text-slate-500 mt-1">
+                        Unterstützt: Album, Playlist, Artist, Podcast & Track
+                    </p>
+                </div>
+
+                <!-- Live Auto-Detection Preview -->
+                <div id="oembedPreviewBox" class="hidden bg-dark-surface p-3 rounded-xl border border-spotify/30 flex items-center gap-3">
+                    <img id="previewImage" src="" class="w-12 h-12 rounded-lg object-cover bg-black shrink-0" alt="Preview">
+                    <div class="overflow-hidden">
+                        <span class="text-[9px] bg-spotify/20 text-spotify font-bold px-1.5 py-0.5 rounded">Automatisch geladen</span>
+                        <h5 id="previewTitle" class="text-xs font-bold truncate text-white mt-1">...</h5>
+                    </div>
+                </div>
+
+                <!-- Title Override Input -->
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                        Titel
+                    </label>
+                    <input type="text" id="titleInput" required placeholder="z. B. Benjamin Blümchen" 
+                           class="w-full px-3.5 py-2.5 bg-dark-surface border border-white/10 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-spotify transition">
+                </div>
+
+                <!-- Cover URL Override Input -->
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                        Cover URL
+                    </label>
+                    <input type="url" id="coverUrlInput" required placeholder="https://i.scdn.co/image/..." 
+                           class="w-full px-3.5 py-2.5 bg-dark-surface border border-white/10 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-spotify transition">
+                </div>
+
+                <!-- Category Selector -->
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Kategorie</label>
+                    <select id="categorySelect" class="w-full px-3 py-2.5 bg-dark-surface border border-white/10 rounded-xl text-xs text-white font-medium focus:outline-none focus:border-spotify">
+                        <option value="hoerspiel">🎧 Hörspiel</option>
+                        <option value="podcast">🎙️ Podcast</option>
+                        <option value="einschlafen">🌙 Einschlafen</option>
+                        <option value="musik">🎵 Musik</option>
+                    </select>
+                </div>
+
+                <!-- Form Submit -->
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeAddModal()" class="w-1/2 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 font-semibold rounded-xl text-xs transition">Abbrechen</button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-spotify hover:bg-spotify-hover text-slate-950 font-bold rounded-xl text-xs shadow-glow-spotify transition">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // High quality default curated items
+        const DEFAULT_ITEMS = [
+            {
+                id: 'benjamin-1',
+                title: 'Benjamin Blümchen',
+                coverUrl: 'https://i.scdn.co/image/ab6761610000e5eb26d21f8a846f4eb27ca2fb7c',
+                spotifyUrl: 'https://open.spotify.com/artist/5L1hF33G24E5Lw1b4sA7rQ',
+                category: 'hoerspiel',
+                isDefault: true
+            },
+            {
+                id: 'drei-fragezeichen',
+                title: 'Die drei ???',
+                coverUrl: 'https://i.scdn.co/image/ab6761610000e5eb3b3cf8911ec3f92b7fa1f221',
+                spotifyUrl: 'https://open.spotify.com/artist/3VK8mYClW0f5S1m2aFThsS',
+                category: 'hoerspiel',
+                isDefault: true
+            },
+            {
+                id: 'sendung-mit-der-maus',
+                title: 'Die Sendung mit der Maus',
+                coverUrl: 'https://i.scdn.co/image/ab6765630000ba8a7863116be5ffb5275037d40d',
+                spotifyUrl: 'https://open.spotify.com/show/2vObS881q2YxInD4k00J4N',
+                category: 'podcast',
+                isDefault: true
+            },
+            {
+                id: 'disney-klassiker',
+                title: 'Disney Klassiker',
+                coverUrl: 'https://i.scdn.co/image/ab67706f00000003b6814674eb9ca4efb5efad78',
+                spotifyUrl: 'https://open.spotify.com/playlist/37i9dQZF1DX83L3J36q49m',
+                category: 'musik',
+                isDefault: true
+            },
+            {
+                id: 'asterix-obelix',
+                title: 'Asterix & Obelix',
+                coverUrl: 'https://i.scdn.co/image/ab6761610000e5ebd1b0f5b128521f5db6dfc64c',
+                spotifyUrl: 'https://open.spotify.com/artist/738l380yRmt87wThYvD31o',
+                category: 'hoerspiel',
+                isDefault: true
+            },
+            {
+                id: 'pettersson-findus',
+                title: 'Pettersson und Findus',
+                coverUrl: 'https://i.scdn.co/image/ab6761610000e5eb3da17a1dfa0d82054c2a524b',
+                spotifyUrl: 'https://open.spotify.com/artist/0d2G381283hO9oP0QZtXGg',
+                category: 'hoerspiel',
+                isDefault: true
+            },
+            {
+                id: 'pippi-langstrumpf',
+                title: 'Astrid Lindgren - Pippi',
+                coverUrl: 'https://i.scdn.co/image/ab6761610000e5eb8a6caef7df4b97148a0429f6',
+                spotifyUrl: 'https://open.spotify.com/album/43Yl4fBvB90zI2V0gJ9T5N',
+                category: 'hoerspiel',
+                isDefault: true
+            },
+            {
+                id: 'sandmann-einschlafen',
+                title: 'Unser Sandmännchen',
+                coverUrl: 'https://i.scdn.co/image/ab6765630000ba8a7c2e0436bc1eb94cfb1a4a15',
+                spotifyUrl: 'https://open.spotify.com/show/06gO4uS4mOQe5X6A5jS2eZ',
+                category: 'einschlafen',
+                isDefault: true
+            }
+        ];
+
+        // State variables
+        let items = [];
+        let currentFilter = 'all';
+        let currentSearchQuery = '';
+        let activePlayingId = null;
+        let fetchTimeout = null;
+
+        // On Load
+        window.onload = function() {
+            loadSavedItems();
+            renderGrid();
+            updateCounts();
+        };
+
+        function loadSavedItems() {
+            try {
+                const stored = localStorage.getItem('audiobox_items');
+                if (stored) {
+                    items = JSON.parse(stored);
+                } else {
+                    items = [...DEFAULT_ITEMS];
+                    saveToLocalStorage();
+                }
+            } catch (e) {
+                items = [...DEFAULT_ITEMS];
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('audiobox_items', JSON.stringify(items));
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('cardsGrid');
+            const emptyState = document.getElementById('emptyState');
+            grid.innerHTML = '';
+
+            const filtered = items.filter(item => {
+                const matchesCategory = currentFilter === 'all' || item.category === currentFilter;
+                const matchesSearch = item.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
+                return matchesCategory && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            grid.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            filtered.forEach(item => {
+                const isPlaying = activePlayingId === item.id;
+
+                const cardHtml = `
+                    <div class="group relative glass-card rounded-2xl p-2.5 transition duration-300 transform hover:-translate-y-1.5 hover:shadow-card-hover cursor-pointer flex flex-col justify-between"
+                         onclick="playSpotifyItem('${item.id}')">
+                        
+                        <!-- Image Container -->
+                        <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-dark-surface mb-2.5 border border-white/5">
+                            <img src="${item.coverUrl}" 
+                                 alt="${item.title}" 
+                                 loading="lazy"
+                                 onerror="this.src='https://placehold.co/400x400/121820/1DB954?text=Audio'"
+                                 class="w-full h-full object-cover transition duration-500 group-hover:scale-105">
+                            
+                            <!-- Dark Hover Overlay -->
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center">
+                                <div class="w-10 h-10 rounded-full bg-spotify text-slate-950 flex items-center justify-center text-sm shadow-glow-spotify transform group-hover:scale-110 transition">
+                                    <i class="fa-solid fa-play ml-0.5"></i>
+                                </div>
+                            </div>
+
+                            <!-- Playing Badge -->
+                            ${isPlaying ? `
+                                <div class="absolute top-2 right-2 bg-spotify text-slate-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping"></span>
+                                    <span>LÄUFT</span>
+                                </div>
+                            ` : ''}
+
+                            <!-- Delete Action -->
+                            ${!item.isDefault ? `
+                                <button onclick="deleteItem(event, '${item.id}')" title="Löschen" class="absolute top-2 left-2 w-6 h-6 bg-black/70 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-150">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        <!-- Card Meta -->
+                        <div class="px-0.5">
+                            <h3 class="font-bold text-xs leading-snug line-clamp-1 text-slate-200 group-hover:text-spotify transition">${item.title}</h3>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += cardHtml;
+            });
+        }
+
+        // Filter Logic
+        function filterCategory(category) {
+            currentFilter = category;
+            
+            document.querySelectorAll('.cat-chip').forEach(btn => {
+                if (btn.dataset.cat === category) {
+                    btn.className = "cat-chip px-4 py-2 rounded-xl font-semibold text-xs bg-spotify text-slate-950 transition shrink-0";
+                } else {
+                    btn.className = "cat-chip px-4 py-2 rounded-xl font-semibold text-xs bg-dark-card text-slate-300 hover:text-white border border-white/5 transition shrink-0";
+                }
+            });
+
+            renderGrid();
+        }
+
+        function handleSearch() {
+            currentSearchQuery = document.getElementById('searchInput').value.trim();
+            renderGrid();
+        }
+
+        function handleSearchMobile() {
+            currentSearchQuery = document.getElementById('searchInputMobile').value.trim();
+            renderGrid();
+        }
+
+        function resetSearchAndFilter() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchInputMobile').value = '';
+            currentSearchQuery = '';
+            filterCategory('all');
+        }
+
+        function updateCounts() {
+            const countAll = document.getElementById('count-all');
+            if (countAll) countAll.innerText = items.length;
+        }
+
+        function handleUrlInputChange(url) {
+            clearTimeout(fetchTimeout);
+            const spinner = document.getElementById('fetchSpinner');
+            const statusText = document.getElementById('fetchStatusText');
+            const previewBox = document.getElementById('oembedPreviewBox');
+
+            if (!url || !url.includes('spotify.com')) {
+                spinner.classList.add('hidden');
+                previewBox.classList.add('hidden');
+                statusText.innerText = "Unterstützt: Album, Playlist, Artist, Podcast & Track";
+                return;
+            }
+
+            spinner.classList.remove('hidden');
+            statusText.innerText = "Lade Infos von Spotify...";
+
+            fetchTimeout = setTimeout(() => {
+                fetchSpotifyMetadata(url);
+            }, 500);
+        }
+
+        async function fetchSpotifyMetadata(spotifyUrl) {
+            const spinner = document.getElementById('fetchSpinner');
+            const statusText = document.getElementById('fetchStatusText');
+            const previewBox = document.getElementById('oembedPreviewBox');
+
+            try {
+                const oembedUrl = `https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl)}`;
+                const response = await fetch(oembedUrl);
+                
+                if (!response.ok) throw new Error("OEmbed request failed");
+
+                const data = await response.json();
+
+                if (data.title) document.getElementById('titleInput').value = data.title;
+                if (data.thumbnail_url) document.getElementById('coverUrlInput').value = data.thumbnail_url;
+
+                if (spotifyUrl.includes('/show/') || spotifyUrl.includes('/episode/')) {
+                    document.getElementById('categorySelect').value = 'podcast';
+                }
+
+                document.getElementById('previewImage').src = data.thumbnail_url || '';
+                document.getElementById('previewTitle').innerText = data.title || 'Spotify Audio';
+                previewBox.classList.remove('hidden');
+
+                statusText.innerText = "✓ Metadaten geladen";
+
+            } catch (err) {
+                statusText.innerText = "Titel manuell prüfen";
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function playSpotifyItem(id) {
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+
+            activePlayingId = id;
+            renderGrid();
+
+            const drawer = document.getElementById('playerDrawer');
+            const iframeContainer = document.getElementById('iframeContainer');
+            const coverThumb = document.getElementById('playerCoverThumb');
+            const playerTitle = document.getElementById('playerTitle');
+            const externalLink = document.getElementById('externalSpotifyLink');
+
+            coverThumb.style.backgroundImage = `url('${item.coverUrl}')`;
+            playerTitle.innerText = item.title;
+            externalLink.href = item.spotifyUrl;
+
+            const embedUrl = convertToSpotifyEmbedUrl(item.spotifyUrl);
+
+            iframeContainer.innerHTML = `
+                <iframe src="${embedUrl}" 
+                        width="100%" 
+                        height="152" 
+                        frameborder="0" 
+                        allowtransparency="true" 
+                        allow="encrypted-media; autoplay; clipboard-write; encrypted-media" 
+                        class="rounded-xl">
+                </iframe>
+            `;
+
+            drawer.classList.remove('translate-y-full');
+        }
+
+        function convertToSpotifyEmbedUrl(url) {
+            if (!url) return '';
+            const cleanUrl = url.split('?')[0];
+            if (cleanUrl.includes('/embed/')) return cleanUrl;
+            return cleanUrl.replace('open.spotify.com/', 'open.spotify.com/embed/');
+        }
+
+        function closePlayer() {
+            const drawer = document.getElementById('playerDrawer');
+            const iframeContainer = document.getElementById('iframeContainer');
+            
+            drawer.classList.add('translate-y-full');
+            
+            setTimeout(() => {
+                iframeContainer.innerHTML = '';
+                activePlayingId = null;
+                renderGrid();
+            }, 300);
+        }
+
+        // Modal Handlers
+        function openAddModal() {
+            document.getElementById('addForm').reset();
+            document.getElementById('oembedPreviewBox').classList.add('hidden');
+            const modal = document.getElementById('addModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.remove('scale-95');
+            modal.querySelector('div').classList.add('scale-100');
+        }
+
+        function closeAddModal() {
+            const modal = document.getElementById('addModal');
+            modal.querySelector('div').classList.remove('scale-100');
+            modal.querySelector('div').classList.add('scale-95');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function handleSaveItem(e) {
+            e.preventDefault();
+            const title = document.getElementById('titleInput').value.trim();
+            const coverUrl = document.getElementById('coverUrlInput').value.trim();
+            const spotifyUrl = document.getElementById('spotifyUrlInput').value.trim();
+            const category = document.getElementById('categorySelect').value;
+
+            if (!title || !spotifyUrl) return;
+
+            const newItem = {
+                id: 'custom-' + Date.now(),
+                title: title,
+                coverUrl: coverUrl || 'https://placehold.co/400x400/121820/1DB954?text=Spotify',
+                spotifyUrl: spotifyUrl,
+                category: category,
+                isDefault: false
+            };
+
+            items.unshift(newItem);
+            saveToLocalStorage();
+            updateCounts();
+            renderGrid();
+            closeAddModal();
+            playSpotifyItem(newItem.id);
+        }
+
+        function deleteItem(e, id) {
+            e.stopPropagation();
+            items = items.filter(i => i.id !== id);
+            saveToLocalStorage();
+            updateCounts();
+            renderGrid();
+        }
+
+        // Bedtime Night Mode Toggle
+        function toggleNightLight() {
+            document.body.classList.toggle('night-light');
+            const nightText = document.getElementById('nightText');
+            if (document.body.classList.contains('night-light')) {
+                if (nightText) nightText.innerText = "Aktiv";
+            } else {
+                if (nightText) nightText.innerText = "Nacht";
+            }
+        }
+    </script>
+</body>
+</html>
