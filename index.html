@@ -60,6 +60,14 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+
+        .brand:active {
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .brand-icon {
@@ -87,6 +95,13 @@
             justify-content: center;
             font-size: 1.1rem;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-icon.admin-btn {
+            display: none;
+            border-color: var(--accent-spotify);
+            color: var(--accent-spotify);
         }
 
         .grid {
@@ -105,11 +120,34 @@
             flex-direction: column;
             position: relative;
             backdrop-filter: blur(10px);
+            transition: transform 0.15s;
         }
 
         .card:active {
             transform: scale(0.97);
             opacity: 0.9;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            background: #ef4444;
+            color: #fff;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        body.admin-mode .delete-btn {
+            display: flex;
         }
 
         .cover-wrap {
@@ -130,20 +168,6 @@
             height: 100%;
             object-fit: cover;
             display: block;
-        }
-
-        .badge {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.15);
-            color: #fff;
-            font-size: 0.65rem;
-            font-weight: 600;
-            padding: 3px 8px;
-            border-radius: 20px;
         }
 
         .title {
@@ -234,6 +258,23 @@
             outline: none;
         }
 
+        .preview-box {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            margin-bottom: 14px;
+        }
+
+        .preview-box img {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
         .btn-submit {
             width: 100%;
             padding: 14px;
@@ -244,7 +285,21 @@
             font-weight: 700;
             font-size: 0.95rem;
             cursor: pointer;
-            margin-top: 10px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: calc(env(safe-area-inset-bottom) + 20px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(29, 185, 84, 0.9);
+            color: #000;
+            font-weight: 600;
+            font-size: 0.8rem;
+            padding: 8px 16px;
+            border-radius: 20px;
+            z-index: 200;
+            display: none;
         }
     </style>
 </head>
@@ -252,12 +307,12 @@
 
 <div class="container">
     <header>
-        <div class="brand">
+        <div class="brand" id="brandTitle">
             <div class="brand-icon"></div>
             <span>Hörspiel Box</span>
         </div>
         <div class="actions">
-            <button class="btn-icon" id="addToggle">＋</button>
+            <button class="btn-icon admin-btn" id="addToggle">＋</button>
             <button class="btn-icon" id="nightToggle">🌙</button>
         </div>
     </header>
@@ -265,59 +320,67 @@
     <div class="grid" id="grid"></div>
 </div>
 
-<!-- Add Modal -->
+<div class="toast" id="toast"></div>
+
+<!-- Modal zum Hinzufügen -->
 <div class="modal" id="addModal">
     <div class="modal-body">
         <div class="modal-header">
-            <h3>Neues Hörspiel / Link</h3>
+            <h3>Neues Hörspiel hinzufügen</h3>
             <button class="close-btn" onclick="closeAddModal()">✕</button>
         </div>
         <div class="form-group">
-            <label>Spotify Link (Album, Podcast, Künstler)</label>
-            <input type="text" id="spotifyUrlInput" placeholder="https://open.spotify.com/album/...">
+            <label>Spotify Link (Künstler, Album, Podcast oder Playlist)</label>
+            <input type="text" id="spotifyUrlInput" placeholder="https://open.spotify.com/artist/...">
         </div>
-        <button class="btn-submit" onclick="addCustomItem()">Hinzufügen</button>
+        <div class="preview-box" id="previewBox">
+            <img id="previewImg" src="">
+            <div style="font-size: 0.85rem; font-weight: 600;" id="previewText"></div>
+        </div>
+        <button class="btn-submit" onclick="addCustomItem()">Zur Mediathek hinzufügen</button>
     </div>
 </div>
 
 <script>
-    // Standard-Einträge mit Spotify URLs
     const defaultItems = [
-        {
-            title: 'Benjamin Blümchen',
-            sub: 'Künstlerprofil',
-            spotifyUrl: 'https://open.spotify.com/artist/0d8f3T0PzYp1xUe53C1Nn0'
-        },
-        {
-            title: 'Die drei ???',
-            sub: 'Künstlerprofil',
-            spotifyUrl: 'https://open.spotify.com/artist/3b371b695781a78d0f19c961'
-        },
-        {
-            title: 'Sendung mit der Maus',
-            sub: 'Podcast',
-            spotifyUrl: 'https://open.spotify.com/show/3qC5xQx5B2G15Z15'
-        },
-        {
-            title: 'Disney Hörspiele',
-            sub: 'Playlist',
-            spotifyUrl: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO'
-        },
-        {
-            title: 'Asterix & Obelix',
-            sub: 'Künstlerprofil',
-            spotifyUrl: 'https://open.spotify.com/artist/234z9wIbfT22JdYgB309bE'
-        },
-        {
-            title: 'Pettersson & Findus',
-            sub: 'Künstlerprofil',
-            spotifyUrl: 'https://open.spotify.com/artist/6l1dC5vB4WvR2yK9dE8d5t'
-        }
+        { title: 'Benjamin Blümchen', sub: 'Künstlerprofil', spotifyUrl: 'https://open.spotify.com/artist/0d8f3T0PzYp1xUe53C1Nn0' },
+        { title: 'Die drei ???', sub: 'Künstlerprofil', spotifyUrl: 'https://open.spotify.com/artist/3b371b695781a78d0f19c961' },
+        { title: 'Sendung mit der Maus', sub: 'Podcast', spotifyUrl: 'https://open.spotify.com/show/3qC5xQx5B2G15Z15' },
+        { title: 'Disney Hörspiele', sub: 'Playlist', spotifyUrl: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO' },
+        { title: 'Asterix & Obelix', sub: 'Künstlerprofil', spotifyUrl: 'https://open.spotify.com/artist/234z9wIbfT22JdYgB309bE' },
+        { title: 'Pettersson & Findus', sub: 'Künstlerprofil', spotifyUrl: 'https://open.spotify.com/artist/6l1dC5vB4WvR2yK9dE8d5t' }
     ];
 
     let items = JSON.parse(localStorage.getItem('my_hoerspiele')) || defaultItems;
+    let clickCount = 0;
+    let clickTimer = null;
+    let isAdmin = false;
 
     const grid = document.getElementById('grid');
+
+    // Tap-Zähler für Admin-Modus (5x Tippen auf "Hörspiel Box")
+    document.getElementById('brandTitle').onclick = () => {
+        clickCount++;
+        clearTimeout(clickTimer);
+        
+        if (clickCount >= 5) {
+            isAdmin = !isAdmin;
+            document.body.classList.toggle('admin-mode', isAdmin);
+            document.getElementById('addToggle').style.display = isAdmin ? 'flex' : 'none';
+            showToast(isAdmin ? '🔒 Admin-Modus AKTIV' : '🔓 Admin-Modus BEENDET');
+            clickCount = 0;
+            renderGrid();
+        } else {
+            clickTimer = setTimeout(() => { clickCount = 0; }, 1500);
+        }
+    };
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.innerText = msg;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    }
 
     async function fetchCover(spotifyUrl) {
         try {
@@ -336,15 +399,16 @@
     }
 
     async function renderGrid() {
-        grid.innerHTML = '<p style="color:var(--text-sub); grid-column:1/-1; text-align:center;">Lade Cover...</p>';
         grid.innerHTML = '';
 
-        for (let item of items) {
+        for (let index = 0; index < items.length; index++) {
+            const item = items[index];
             const oembedData = await fetchCover(item.spotifyUrl);
             
             const el = document.createElement('div');
             el.className = 'card';
             el.innerHTML = `
+                <div class="delete-btn" onclick="deleteItem(event, ${index})">✕</div>
                 <div class="cover-wrap">
                     <img src="${oembedData.cover}" alt="${item.title}">
                 </div>
@@ -352,12 +416,33 @@
                 <div class="sub">${item.sub || 'Spotify'}</div>
             `;
             
-            el.onclick = () => {
+            el.onclick = (e) => {
+                if (e.target.classList.contains('delete-btn')) return;
                 window.location.href = item.spotifyUrl;
             };
             grid.appendChild(el);
         }
     }
+
+    function deleteItem(e, index) {
+        e.stopPropagation();
+        items.splice(index, 1);
+        localStorage.setItem('my_hoerspiele', JSON.stringify(items));
+        renderGrid();
+    }
+
+    // Live-Vorschau im Modal
+    document.getElementById('spotifyUrlInput').oninput = async (e) => {
+        const url = e.target.value.trim();
+        if (url.includes('spotify.com')) {
+            const data = await fetchCover(url);
+            document.getElementById('previewImg').src = data.cover;
+            document.getElementById('previewText').innerText = data.title;
+            document.getElementById('previewBox').style.display = 'flex';
+        } else {
+            document.getElementById('previewBox').style.display = 'none';
+        }
+    };
 
     document.getElementById('addToggle').onclick = () => {
         document.getElementById('addModal').classList.add('open');
@@ -365,6 +450,8 @@
 
     function closeAddModal() {
         document.getElementById('addModal').classList.remove('open');
+        document.getElementById('previewBox').style.display = 'none';
+        document.getElementById('spotifyUrlInput').value = '';
     }
 
     async function addCustomItem() {
@@ -379,7 +466,6 @@
         });
 
         localStorage.setItem('my_hoerspiele', JSON.stringify(items));
-        document.getElementById('spotifyUrlInput').value = '';
         closeAddModal();
         renderGrid();
     }
