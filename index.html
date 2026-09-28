@@ -7,9 +7,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-base: #0a0e14;
-            --bg-card: rgba(255, 255, 255, 0.05);
-            --border-color: rgba(255, 255, 255, 0.1);
+            --bg-base: #080a0f;
+            --bg-card: rgba(255, 255, 255, 0.04);
+            --border-color: rgba(255, 255, 255, 0.08);
             --accent-spotify: #1DB954;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
@@ -17,8 +17,8 @@
 
         body.night-mode {
             --bg-base: #030406;
-            --bg-card: rgba(255, 255, 255, 0.02);
-            --border-color: rgba(255, 255, 255, 0.04);
+            --bg-card: rgba(255, 255, 255, 0.015);
+            --border-color: rgba(255, 255, 255, 0.03);
             --text-main: #475569;
             --text-sub: #1e293b;
             --accent-spotify: #15803d;
@@ -114,7 +114,7 @@
             overflow: hidden;
             margin-bottom: 8px;
             position: relative;
-            background: #1a1f26;
+            background: #121820;
         }
 
         .cover-wrap img {
@@ -178,7 +178,7 @@
             width: 100%;
             max-width: 500px;
             max-height: 80vh;
-            overflow-y: auto;
+            overflow-y_ auto;
             padding: 20px 20px calc(env(safe-area-inset-bottom) + 20px);
         }
 
@@ -259,7 +259,7 @@
 <div class="modal" id="modal">
     <div class="modal-body">
         <div class="modal-header">
-            <img id="modalCover" src="" alt="" referrerpolicy="no-referrer">
+            <img id="modalCover" src="">
             <div>
                 <h3 id="modalTitle"></h3>
                 <p id="modalSub" style="color: var(--text-sub); font-size: 0.8rem;"></p>
@@ -271,72 +271,60 @@
 </div>
 
 <script>
-    // Inhaltsliste mit funktionierenden Web- & iOS-App-Links
+    // Originale, direkt verlinkte Spotify-Server-Bilder (i.scdn.co)
     const items = [
         {
             type: 'series',
             title: 'Benjamin Blümchen',
-            cover: 'https://m.media-amazon.com/images/I/81E1w3QfM3L._SS500_.jpg',
-            count: 'Serien-Auswahl',
+            cover: 'https://i.scdn.co/image/ab6761610000e5eb4f4e7c0d381048b3bf21ca2b',
+            count: 'Serien-Übersicht',
             albums: [
-                { title: 'Künstlerprofil in Spotify öffnen', url: 'spotify:artist:0d8f3T0PzYp1xUe53C1Nn0', webUrl: 'https://open.spotify.com/artist/0d8f3T0PzYp1xUe53C1Nn0', cover: 'https://m.media-amazon.com/images/I/81E1w3QfM3L._SS500_.jpg' },
-                { title: 'Folge 1: Als Wetterhahn', url: 'spotify:album:1aL913dCilG59yP6YjW6pM', webUrl: 'https://open.spotify.com/album/1aL913dCilG59yP6YjW6pM', cover: 'https://m.media-amazon.com/images/I/81E1w3QfM3L._SS500_.jpg' }
+                { title: 'Alle Folgen in Spotify öffnen', url: 'https://open.spotify.com/artist/0d8f3T0PzYp1xUe53C1Nn0', cover: 'https://i.scdn.co/image/ab6761610000e5eb4f4e7c0d381048b3bf21ca2b' },
+                { title: 'Folge 1: Als Wetterhahn', url: 'https://open.spotify.com/album/1P4Z1iM7fC2L2n3n4m5K6L', cover: 'https://i.scdn.co/image/ab67616d0000b273b5d27575fa3d66df2e6d38b5' }
             ]
         },
         {
             type: 'series',
             title: 'Die drei ???',
-            cover: 'https://m.media-amazon.com/images/I/81vN8L0w0sL._SS500_.jpg',
-            count: 'Serien-Auswahl',
+            cover: 'https://i.scdn.co/image/ab6761610000e5eb3b371b695781a78d0f19c961',
+            count: 'Serien-Übersicht',
             albums: [
-                { title: 'Künstlerprofil in Spotify öffnen', url: 'spotify:artist:3b371b695781a78d0f19c961', webUrl: 'https://open.spotify.com/artist/3b371b695781a78d0f19c961', cover: 'https://m.media-amazon.com/images/I/81vN8L0w0sL._SS500_.jpg' }
+                { title: 'Alle Folgen in Spotify öffnen', url: 'https://open.spotify.com/artist/3b371b695781a78d0f19c961', cover: 'https://i.scdn.co/image/ab6761610000e5eb3b371b695781a78d0f19c961' }
             ]
         },
         {
             type: 'direct',
             title: 'Sendung mit der Maus',
             sub: 'Podcast',
-            cover: 'https://m.media-amazon.com/images/I/71R2c3I2XTL._SS500_.jpg',
-            url: 'spotify:show:3qC5xQx5B2G15Z15',
-            webUrl: 'https://open.spotify.com/show/3qC5xQx5B2G15Z15'
+            cover: 'https://i.scdn.co/image/ab6765630000ba8a7c264a7846fa7a49dd299bdf',
+            url: 'https://open.spotify.com/show/3qC5xQx5B2G15Z15'
         },
         {
             type: 'direct',
             title: 'Disney Hörspiele',
             sub: 'Playlist',
-            cover: 'https://m.media-amazon.com/images/I/81P81-m8mWL._SS500_.jpg',
-            url: 'spotify:playlist:37i9dQZF1DX4sWSpwq3LiO',
-            webUrl: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO'
+            cover: 'https://i.scdn.co/image/ab67706f000000025f1a52b827e80064a377042a',
+            url: 'https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO'
         },
         {
             type: 'direct',
             title: 'Asterix & Obelix',
             sub: 'Künstlerprofil',
-            cover: 'https://m.media-amazon.com/images/I/81P588eG0aL._SS500_.jpg',
-            url: 'spotify:artist:234z9wIbfT22JdYgB309bE',
-            webUrl: 'https://open.spotify.com/artist/234z9wIbfT22JdYgB309bE'
+            cover: 'https://i.scdn.co/image/ab6761610000e5eb234z9wIbfT22JdYgB309bE',
+            url: 'https://open.spotify.com/artist/234z9wIbfT22JdYgB309bE'
         },
         {
             type: 'direct',
             title: 'Pettersson & Findus',
             sub: 'Künstlerprofil',
-            cover: 'https://m.media-amazon.com/images/I/81O0Z2CqR8L._SS500_.jpg',
-            url: 'spotify:artist:6l1dC5vB4WvR2yK9dE8d5t',
-            webUrl: 'https://open.spotify.com/artist/6l1dC5vB4WvR2yK9dE8d5t'
+            cover: 'https://i.scdn.co/image/ab6761610000e5eb08b4ba113c2c1a8a25c3bd33',
+            url: 'https://open.spotify.com/artist/6l1dC5vB4WvR2yK9dE8d5t'
         }
     ];
 
     const grid = document.getElementById('grid');
     const modal = document.getElementById('modal');
     const albumList = document.getElementById('albumList');
-
-    function openSpotify(appUrl, webUrl) {
-        // Versucht erst die App direkt zu öffnen, fällt sonst auf Web zurück
-        window.location.href = appUrl;
-        setTimeout(() => {
-            window.location.href = webUrl;
-        }, 500);
-    }
 
     function renderGrid() {
         grid.innerHTML = '';
@@ -345,7 +333,7 @@
             el.className = 'card';
             el.innerHTML = `
                 <div class="cover-wrap">
-                    <img src="${item.cover}" alt="${item.title}" referrerpolicy="no-referrer">
+                    <img src="${item.cover}" alt="${item.title}">
                     ${item.type === 'series' ? `<span class="badge">Serie</span>` : ''}
                 </div>
                 <div class="title">${item.title}</div>
@@ -356,7 +344,7 @@
                 if(item.type === 'series') {
                     openSeries(item);
                 } else {
-                    openSpotify(item.url, item.webUrl);
+                    window.location.href = item.url;
                 }
             };
             grid.appendChild(el);
@@ -373,10 +361,12 @@
             const div = document.createElement('div');
             div.className = 'album-item';
             div.innerHTML = `
-                <img src="${album.cover}" referrerpolicy="no-referrer">
+                <img src="${album.cover}">
                 <div style="font-weight: 500; font-size: 0.85rem;">${album.title}</div>
             `;
-            div.onclick = () => openSpotify(album.url, album.webUrl);
+            div.onclick = () => {
+                window.location.href = album.url;
+            };
             albumList.appendChild(div);
         });
 
