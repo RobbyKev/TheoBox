@@ -63,11 +63,6 @@
             cursor: pointer;
             padding: 4px 8px;
             border-radius: 12px;
-            transition: background 0.2s;
-        }
-
-        .brand:active {
-            background: rgba(255, 255, 255, 0.05);
         }
 
         .brand-icon {
@@ -95,7 +90,6 @@
             justify-content: center;
             font-size: 1.1rem;
             cursor: pointer;
-            transition: all 0.2s;
         }
 
         .btn-icon.admin-btn {
@@ -120,7 +114,6 @@
             flex-direction: column;
             position: relative;
             backdrop-filter: blur(10px);
-            transition: transform 0.15s;
         }
 
         .card:active {
@@ -194,13 +187,10 @@
             display: none;
             justify-content: center;
             align-items: flex-end;
-            opacity: 0;
-            transition: opacity 0.2s;
         }
 
         .modal.open {
             display: flex;
-            opacity: 1;
         }
 
         .modal-body {
@@ -230,9 +220,6 @@
             height: 32px;
             border-radius: 50%;
             font-size: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             cursor: pointer;
         }
 
@@ -322,11 +309,11 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- Modal zum Hinzufügen -->
+<!-- Add Modal -->
 <div class="modal" id="addModal">
     <div class="modal-body">
         <div class="modal-header">
-            <h3>Neues Hörspiel hinzufügen</h3>
+            <h3>Hörspiel hinzufügen</h3>
             <button class="close-btn" onclick="closeAddModal()">✕</button>
         </div>
         <div class="form-group">
@@ -337,7 +324,7 @@
             <img id="previewImg" src="">
             <div style="font-size: 0.85rem; font-weight: 600;" id="previewText"></div>
         </div>
-        <button class="btn-submit" onclick="addCustomItem()">Zur Mediathek hinzufügen</button>
+        <button class="btn-submit" onclick="addCustomItem()">Hinzufügen</button>
     </div>
 </div>
 
@@ -358,7 +345,7 @@
 
     const grid = document.getElementById('grid');
 
-    // Tap-Zähler für Admin-Modus (5x Tippen auf "Hörspiel Box")
+    // 5x Tippen auf "Hörspiel Box" aktiviert/deaktiviert den Admin-Modus (Plus-Button & Löschen)
     document.getElementById('brandTitle').onclick = () => {
         clickCount++;
         clearTimeout(clickTimer);
@@ -392,7 +379,7 @@
             };
         } catch (e) {
             return {
-                cover: 'https://via.placeholder.com/300/121820/ffffff?text=Spotify',
+                cover: '',
                 title: 'Hörspiel'
             };
         }
@@ -401,18 +388,20 @@
     async function renderGrid() {
         grid.innerHTML = '';
 
-        for (let index = 0; index < items.length; index++) {
-            const item = items[index];
-            const oembedData = await fetchCover(item.spotifyUrl);
-            
+        items.forEach((item, index) => {
             const el = document.createElement('div');
             el.className = 'card';
+            
+            // Falls bereits gechached, sofort anzeigen
+            const coverSrc = item.cachedCover || '';
+            const titleText = item.title || item.cachedTitle || 'Lade...';
+
             el.innerHTML = `
                 <div class="delete-btn" onclick="deleteItem(event, ${index})">✕</div>
                 <div class="cover-wrap">
-                    <img src="${oembedData.cover}" alt="${item.title}">
+                    <img id="img-${index}" src="${coverSrc}" style="${coverSrc ? 'display:block' : 'display:none'}">
                 </div>
-                <div class="title">${item.title || oembedData.title}</div>
+                <div class="title" id="title-${index}">${titleText}</div>
                 <div class="sub">${item.sub || 'Spotify'}</div>
             `;
             
@@ -421,7 +410,25 @@
                 window.location.href = item.spotifyUrl;
             };
             grid.appendChild(el);
-        }
+
+            // Nachladen im Hintergrund, falls noch nicht im Speicher (Cache)
+            if (!item.cachedCover) {
+                fetchCover(item.spotifyUrl).then(data => {
+                    item.cachedCover = data.cover;
+                    if (!item.title) item.title = data.title;
+                    
+                    const imgEl = document.getElementById(`img-${index}`);
+                    const titleEl = document.getElementById(`title-${index}`);
+                    if (imgEl && data.cover) {
+                        imgEl.src = data.cover;
+                        imgEl.style.display = 'block';
+                    }
+                    if (titleEl && data.title) titleEl.innerText = item.title;
+
+                    localStorage.setItem('my_hoerspiele', JSON.stringify(items));
+                });
+            }
+        });
     }
 
     function deleteItem(e, index) {
@@ -431,7 +438,7 @@
         renderGrid();
     }
 
-    // Live-Vorschau im Modal
+    // Live-Vorschau beim Einfügen eines Links
     document.getElementById('spotifyUrlInput').oninput = async (e) => {
         const url = e.target.value.trim();
         if (url.includes('spotify.com')) {
@@ -462,7 +469,9 @@
         items.push({
             title: data.title,
             sub: 'Hinzugefügt',
-            spotifyUrl: url
+            spotifyUrl: url,
+            cachedCover: data.cover,
+            cachedTitle: data.title
         });
 
         localStorage.setItem('my_hoerspiele', JSON.stringify(items));
