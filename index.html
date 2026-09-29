@@ -121,27 +121,36 @@
             opacity: 0.9;
         }
 
-        .delete-btn {
+        .admin-controls {
             position: absolute;
             top: -6px;
+            right: -6px;
             left: -6px;
-            background: #ef4444;
-            color: #fff;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
             display: none;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        body.admin-mode .admin-controls {
+            display: flex;
+        }
+
+        .action-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
             align-items: center;
             justify-content: center;
             font-size: 0.75rem;
             font-weight: bold;
-            z-index: 10;
+            color: #fff;
             box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            cursor: pointer;
         }
 
-        body.admin-mode .delete-btn {
-            display: flex;
-        }
+        .delete-btn { background: #ef4444; }
+        .edit-btn { background: #3b82f6; }
 
         .cover-wrap {
             width: 100%;
@@ -199,7 +208,7 @@
             border-radius: 28px 28px 0 0;
             width: 100%;
             max-width: 500px;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
             padding: 20px 20px calc(env(safe-area-inset-bottom) + 20px);
         }
@@ -309,12 +318,20 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- Add Modal -->
-<div class="modal" id="addModal">
+<!-- Add / Edit Modal -->
+<div class="modal" id="itemModal">
     <div class="modal-body">
         <div class="modal-header">
-            <h3>Hörspiel hinzufügen</h3>
-            <button class="close-btn" onclick="closeAddModal()">✕</button>
+            <h3 id="modalTitle">Hörspiel hinzufügen</h3>
+            <button class="close-btn" onclick="closeModal()">✕</button>
+        </div>
+        <div class="form-group">
+            <label>Titel (optional – wird sonst automatisch von Spotify geholt)</label>
+            <input type="text" id="customTitleInput" placeholder="z. B. Lieblingsfolge Benjamin">
+        </div>
+        <div class="form-group">
+            <label>Untertitel (z. B. Künstler, Hörspiel, Folge 12)</label>
+            <input type="text" id="customSubInput" placeholder="z. B. Hörspiel">
         </div>
         <div class="form-group">
             <label>Spotify Link (Künstler, Album, Podcast oder Playlist)</label>
@@ -324,7 +341,7 @@
             <img id="previewImg" src="">
             <div style="font-size: 0.85rem; font-weight: 600;" id="previewText"></div>
         </div>
-        <button class="btn-submit" onclick="addCustomItem()">Hinzufügen</button>
+        <button class="btn-submit" id="saveBtn" onclick="saveItem()">Speichern</button>
     </div>
 </div>
 
@@ -342,10 +359,11 @@
     let clickCount = 0;
     let clickTimer = null;
     let isAdmin = false;
+    let currentEditIndex = null;
 
     const grid = document.getElementById('grid');
 
-    // 5x Tippen auf "Hörspiel Box" aktiviert/deaktiviert den Admin-Modus (Plus-Button & Löschen)
+    // 5x Tippen auf "Hörspiel Box" aktiviert/deaktiviert Admin-Modus
     document.getElementById('brandTitle').onclick = () => {
         clickCount++;
         clearTimeout(clickTimer);
@@ -392,12 +410,14 @@
             const el = document.createElement('div');
             el.className = 'card';
             
-            // Falls bereits gechached, sofort anzeigen
             const coverSrc = item.cachedCover || '';
             const titleText = item.title || item.cachedTitle || 'Lade...';
 
             el.innerHTML = `
-                <div class="delete-btn" onclick="deleteItem(event, ${index})">✕</div>
+                <div class="admin-controls">
+                    <div class="action-btn delete-btn" onclick="deleteItem(event, ${index})">✕</div>
+                    <div class="action-btn edit-btn" onclick="openEditModal(event, ${index})">✏️</div>
+                </div>
                 <div class="cover-wrap">
                     <img id="img-${index}" src="${coverSrc}" style="${coverSrc ? 'display:block' : 'display:none'}">
                 </div>
@@ -406,12 +426,11 @@
             `;
             
             el.onclick = (e) => {
-                if (e.target.classList.contains('delete-btn')) return;
+                if (e.target.closest('.admin-controls')) return;
                 window.location.href = item.spotifyUrl;
             };
             grid.appendChild(el);
 
-            // Nachladen im Hintergrund, falls noch nicht im Speicher (Cache)
             if (!item.cachedCover) {
                 fetchCover(item.spotifyUrl).then(data => {
                     item.cachedCover = data.cover;
@@ -433,12 +452,51 @@
 
     function deleteItem(e, index) {
         e.stopPropagation();
-        items.splice(index, 1);
-        localStorage.setItem('my_hoerspiele', JSON.stringify(items));
-        renderGrid();
+        if (confirm('Dieses Hörspiel wirklich löschen?')) {
+            items.splice(index, 1);
+            localStorage.setItem('my_hoerspiele', JSON.stringify(items));
+            renderGrid();
+        }
     }
 
-    // Live-Vorschau beim Einfügen eines Links
+    // Modal ffnen für "Hinzufügen"
+    document.getElementById('addToggle').onclick = () => {
+        currentEditIndex = null;
+        document.getElementById('modalTitle').innerText = 'Hörspiel hinzufügen';
+        document.getElementById('customTitleInput').value = '';
+        document.getElementById('customSubInput').value = '';
+        document.getElementById('spotifyUrlInput').value = '';
+        document.getElementById('previewBox').style.display = 'none';
+        document.getElementById('itemModal').classList.add('open');
+    };
+
+    // Modal öffnen für "Bearbeiten"
+    function openEditModal(e, index) {
+        e.stopPropagation();
+        currentEditIndex = index;
+        const item = items[index];
+
+        document.getElementById('modalTitle').innerText = 'Hörspiel bearbeiten';
+        document.getElementById('customTitleInput').value = item.title || '';
+        document.getElementById('customSubInput').value = item.sub || '';
+        document.getElementById('spotifyUrlInput').value = item.spotifyUrl || '';
+
+        if (item.cachedCover) {
+            document.getElementById('previewImg').src = item.cachedCover;
+            document.getElementById('previewText').innerText = item.title || item.cachedTitle || '';
+            document.getElementById('previewBox').style.display = 'flex';
+        } else {
+            document.getElementById('previewBox').style.display = 'none';
+        }
+
+        document.getElementById('itemModal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('itemModal').classList.remove('open');
+    }
+
+    // Live-Vorschau
     document.getElementById('spotifyUrlInput').oninput = async (e) => {
         const url = e.target.value.trim();
         if (url.includes('spotify.com')) {
@@ -451,31 +509,44 @@
         }
     };
 
-    document.getElementById('addToggle').onclick = () => {
-        document.getElementById('addModal').classList.add('open');
-    };
-
-    function closeAddModal() {
-        document.getElementById('addModal').classList.remove('open');
-        document.getElementById('previewBox').style.display = 'none';
-        document.getElementById('spotifyUrlInput').value = '';
-    }
-
-    async function addCustomItem() {
+    async function saveItem() {
         const url = document.getElementById('spotifyUrlInput').value.trim();
+        const customTitle = document.getElementById('customTitleInput').value.trim();
+        const customSub = document.getElementById('customSubInput').value.trim();
+
         if (!url) return;
 
-        const data = await fetchCover(url);
-        items.push({
-            title: data.title,
-            sub: 'Hinzugefügt',
+        let coverUrl = '';
+        let fetchedTitle = '';
+
+        // Falls wir neu hinzufügen ODER der Link beim Bearbeiten geändert wurde
+        if (currentEditIndex === null || items[currentEditIndex].spotifyUrl !== url) {
+            const data = await fetchCover(url);
+            coverUrl = data.cover;
+            fetchedTitle = data.title;
+        } else {
+            coverUrl = items[currentEditIndex].cachedCover;
+            fetchedTitle = items[currentEditIndex].cachedTitle;
+        }
+
+        const itemData = {
+            title: customTitle || fetchedTitle,
+            sub: customSub || 'Spotify',
             spotifyUrl: url,
-            cachedCover: data.cover,
-            cachedTitle: data.title
-        });
+            cachedCover: coverUrl,
+            cachedTitle: fetchedTitle
+        };
+
+        if (currentEditIndex !== null) {
+            // Bearbeiten
+            items[currentEditIndex] = itemData;
+        } else {
+            // Neu hinzufügen
+            items.push(itemData);
+        }
 
         localStorage.setItem('my_hoerspiele', JSON.stringify(items));
-        closeAddModal();
+        closeModal();
         renderGrid();
     }
 
