@@ -522,11 +522,9 @@ body.sky .moon{opacity:.85}
     <button type="button" id="spModeBtn"></button>
     <button type="button" id="spBtn">Mit Spotify verbinden</button>
     <p id="spState"></p>
-    <button type="button" id="dirBtn">MP3-Ordner hinzufügen</button>
+    <input type="file" id="filesInput" multiple hidden>
     <input type="file" id="dirInput" webkitdirectory directory multiple hidden>
-    <button type="button" id="zipBtn">ZIP mit Ordnern hinzufügen</button>
     <input type="file" id="zipInput" hidden>
-    <p id="batchState"></p>
     <button type="button" id="exportBtn">Kacheln exportieren</button>
     <button type="button" id="importBtn">Kacheln importieren</button>
     <input type="file" id="importFile" hidden>
@@ -759,6 +757,7 @@ function sfxWake(){
 ['pointerdown','touchstart','click','keydown'].forEach(ev=>window.addEventListener(ev,sfxWake,{passive:true}));
 
 const AUDIO_RX=/\.(mp3|m4a|m4b|aac|wav|ogg|opus|flac)$/i;
+const IMG_RX=/\.(jpe?g|png|webp|gif)$/i;
 
 /* IndexedDB für MP3-Dateien */
 let dbp=null;
@@ -803,6 +802,9 @@ function renderGrid(){
     const a=document.createElement('button');a.type='button';a.className='tile add';
     a.innerHTML='<span class="emoji" aria-hidden="true">＋</span><span class="name">Neue Kachel</span>';
     a.onclick=()=>openEditor(null);grid.append(a);
+    const m=document.createElement('button');m.type='button';m.className='tile add';
+    m.innerHTML='<span class="emoji" aria-hidden="true">📦</span><span class="name">Mehrere</span>';
+    m.onclick=()=>openImportSheet();grid.append(m);
   }
   $('diceBtn').hidden=editMode||list.filter(x=>x.kind!=='folder').length<2;
   empty.hidden=!!list.length||editMode;
@@ -1142,44 +1144,70 @@ $('themeList').addEventListener('click',e=>{const b=e.target.closest('button[dat
 applyTheme(theme);renderDayToggle();
 
 /* Ganze Ordner und ZIP-Dateien einlesen */
-function batchState(t){$('batchState').textContent=t}
+function batchState(t){const el=$('batchState2');if(el)el.textContent=t}
+function openImportSheet(){
+  openSheet('Mehrere hinzufügen');
+  $('sFrame').innerHTML='<div class="slist">'+
+    '<button type="button" class="devbtn" data-imp="files">🎵 Einzelne MP3s auswählen</button>'+
+    '<button type="button" class="devbtn" data-imp="dir">📁 Ganzen Ordner (nur am Rechner)</button>'+
+    '<button type="button" class="devbtn" data-imp="zip">🗜 ZIP mit Ordnern</button>'+
+    '</div><p class="slist-msg" id="batchState2">Pro Ordner entsteht eine Kachel. Liegt ein Bild dabei, wird es das Cover.</p>';
+  $('sFrame').onclick=ev=>{
+    const b=ev.target.closest('[data-imp]');if(!b)return;
+    ({files:'filesInput',dir:'dirInput',zip:'zipInput'})[b.dataset.imp]&&$(({files:'filesInput',dir:'dirInput',zip:'zipInput'})[b.dataset.imp]).click();
+  };
+}
 function groupName(path,fallback){
   const parts=String(path).split('/').filter(Boolean);
   return parts.length>1?parts[parts.length-2]:fallback;
 }
 async function makeTilesFromAudio(items,fallback){
-  // items: [{path, name, blob}] – nach Ordner gruppieren, je Ordner eine Kachel
+  // items: [{path, name, blob, isCover}] – nach Ordner gruppieren, je Ordner eine Kachel
   const groups=new Map();
   for(const it of items){
     const g=groupName(it.path,fallback);
-    if(!groups.has(g))groups.set(g,[]);
-    groups.get(g).push(it);
+    if(!groups.has(g))groups.set(g,{audio:[],cover:null});
+    if(it.isCover){if(!groups.get(g).cover)groups.get(g).cover=it.blob}
+    else groups.get(g).audio.push(it);
   }
+  const total=items.filter(x=>!x.isCover).length;
   let made=0,i=0;
-  for(const [name,list] of groups){
-    list.sort((a,b)=>a.name.localeCompare(b.name,'de',{numeric:true}));
+  for(const [name,data] of groups){
+    const list=data.audio;
+    if(!list.length)continue;
+    list.sort((a,b)=>a.name.localeCompare(b.name,'de',{numeric:true,sensitivity:'base'}));
     const ids=[],names=[];
     for(const it of list){
-      i++;batchState(`Speichert ${i} von ${items.length} …`);
+      i++;batchState(`Speichert ${i} von ${total} …`);
       const id=uid();
       try{await putFile(id,it.blob);ids.push(id);names.push(it.name)}catch(e){batchState('Der Gerätespeicher ist voll.');return made}
     }
     if(!ids.length)continue;
-    tiles.push({id:uid(),name,emoji:'🎧',color:COLORS[tiles.length%COLORS.length],kind:'files',url:'',cover:'',img:'',
+    let img='';
+    if(data.cover){try{img=await fileToSquare(data.cover)}catch(e){}}
+    tiles.push({id:uid(),name,emoji:'🎧',color:COLORS[tiles.length%COLORS.length],kind:'files',url:'',cover:'',img,
       files:ids,names,parent:folder});
     made++;
   }
   if(made){saveTiles();renderGrid()}
   return made;
 }
-$('dirBtn').onclick=()=>$('dirInput').click();
 $('dirInput').addEventListener('change',async e=>{
-  const fl=[...e.target.files].filter(f=>AUDIO_RX.test(f.name));
+  const fl=[...e.target.files].filter(f=>AUDIO_RX.test(f.name)||IMG_RX.test(f.name));
   e.target.value='';
-  if(!fl.length){batchState('In dem Ordner waren keine Audiodateien.');return}
-  const items=fl.map(f=>({path:f.webkitRelativePath||f.name,name:f.name,blob:f}));
+  if(!fl.some(f=>AUDIO_RX.test(f.name))){batchState('In dem Ordner waren keine Audiodateien.');return}
+  const items=fl.map(f=>({path:f.webkitRelativePath||f.name,name:f.name,blob:f,isCover:IMG_RX.test(f.name)}));
   const n=await makeTilesFromAudio(items,'Hörspiele');
-  batchState(n?`${n} Kacheln aus ${fl.length} Dateien angelegt.`:'Es wurde nichts angelegt.');
+  batchState(n?`${n===1?'1 Kachel':n+' Kacheln'} aus ${fl.filter(f=>AUDIO_RX.test(f.name)).length} Titeln angelegt.`:'Es wurde nichts angelegt.');
+  updateStore();
+});
+$('filesInput').addEventListener('change',async e=>{
+  const fl=[...e.target.files].filter(f=>AUDIO_RX.test(f.name)||IMG_RX.test(f.name));
+  e.target.value='';
+  if(!fl.some(f=>AUDIO_RX.test(f.name))){batchState('Darin waren keine Audiodateien.');return}
+  const items=fl.map(f=>({path:f.name,name:f.name,blob:f,isCover:IMG_RX.test(f.name)}));
+  const n=await makeTilesFromAudio(items,'Neues Hörspiel');
+  batchState(n?'Hinzugefügt. Den Namen änderst du über den Stift auf der Kachel.':'Es wurde nichts angelegt.');
   updateStore();
 });
 function loadJSZip(){
@@ -1191,7 +1219,6 @@ function loadJSZip(){
     document.head.append(el);
   });
 }
-$('zipBtn').onclick=()=>$('zipInput').click();
 $('zipInput').addEventListener('change',async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   if(!/\.zip$/i.test(f.name)){batchState('Das ist keine ZIP-Datei.');return}
@@ -1200,16 +1227,17 @@ $('zipInput').addEventListener('change',async e=>{
   try{JSZip=await loadJSZip()}catch(err){batchState('Das ZIP-Werkzeug konnte nicht geladen werden (keine Internetverbindung?).');return}
   try{
     const zip=await JSZip.loadAsync(f);
-    const entries=Object.values(zip.files).filter(x=>!x.dir&&AUDIO_RX.test(x.name)&&!x.name.split('/').pop().startsWith('.'));
+    const entries=Object.values(zip.files).filter(x=>!x.dir&&(AUDIO_RX.test(x.name)||IMG_RX.test(x.name))
+      &&!x.name.split('/').pop().startsWith('.')&&!/(^|\/)__MACOSX\//.test(x.name));
     if(!entries.length){batchState('In der ZIP-Datei waren keine Audiodateien.');return}
     const items=[];
     let i=0;
     for(const en of entries){
-      i++;batchState(`Entpackt ${i} von ${entries.length} …`);
-      items.push({path:en.name,name:en.name.split('/').pop(),blob:await en.async('blob')});
+      i++;batchState(`Entpackt ${IMG_RX.test(en.name)?'Cover':'Titel'} ${i} von ${entries.length} …`);
+      items.push({path:en.name,name:en.name.split('/').pop(),blob:await en.async('blob'),isCover:IMG_RX.test(en.name)});
     }
     const n=await makeTilesFromAudio(items,f.name.replace(/\.zip$/i,''));
-    batchState(n?`${n} Kacheln aus ${entries.length} Dateien angelegt.`:'Es wurde nichts angelegt.');
+    batchState(n?`${n===1?'1 Kachel':n+' Kacheln'} aus ${entries.length} Dateien angelegt.`:'Es wurde nichts angelegt.');
     updateStore();
   }catch(err){batchState('Die ZIP-Datei konnte nicht gelesen werden.')}
 });
