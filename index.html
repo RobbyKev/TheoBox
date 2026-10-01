@@ -525,11 +525,11 @@ body.sky .moon{opacity:.85}
     <button type="button" id="dirBtn">MP3-Ordner hinzufügen</button>
     <input type="file" id="dirInput" webkitdirectory directory multiple hidden>
     <button type="button" id="zipBtn">ZIP mit Ordnern hinzufügen</button>
-    <input type="file" id="zipInput" accept=".zip,application/zip,application/x-zip-compressed" hidden>
+    <input type="file" id="zipInput" hidden>
     <p id="batchState"></p>
     <button type="button" id="exportBtn">Kacheln exportieren</button>
     <button type="button" id="importBtn">Kacheln importieren</button>
-    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <input type="file" id="importFile" hidden>
     <p id="syncState"></p>
     <p id="storeState"></p>
     <p>Zum Übertragen ohne Firebase: hier exportieren, die Datei z. B. per AirDrop schicken und dort importieren. Vorhandene Kacheln bleiben erhalten.</p>
@@ -599,7 +599,7 @@ body.sky .moon{opacity:.85}
     </div>
     <label class="f" id="parentWrap" hidden>Liegt in<select name="parent"></select></label>
     <div id="filesPart" hidden>
-      <label class="f">MP3s hinzufügen<input type="file" name="files" accept="audio/*,.mp3,.m4a,.m4b,.aac,.wav,.ogg,.opus,.flac" multiple></label>
+      <label class="f">MP3s hinzufügen<input type="file" name="files" multiple></label>
       <ul class="filelist" id="fileList"></ul>
       <button type="button" class="linkbtn" id="clearFiles" hidden>Alle Dateien entfernen</button>
       <p class="hint">Mehrere Dateien werden nach Dateinamen sortiert und als Teile nacheinander abgespielt. Sie bleiben nur auf diesem Gerät.</p>
@@ -756,6 +756,8 @@ function sfxWake(){
   }catch(e){}
 }
 ['pointerdown','touchstart','click','keydown'].forEach(ev=>window.addEventListener(ev,sfxWake,{passive:true}));
+
+const AUDIO_RX=/\.(mp3|m4a|m4b|aac|wav|ogg|opus|flac)$/i;
 
 /* IndexedDB für MP3-Dateien */
 let dbp=null;
@@ -1031,7 +1033,9 @@ form.addEventListener('submit',async e=>{
     if(!name){toast('Gib der Kachel einen Namen.');$('saveBtn').disabled=false;$('saveBtn').textContent='Speichern';form.elements['name'].focus();return}
   }
   try{
-    const fresh=[...form.files.files].sort((a,b)=>a.name.localeCompare(b.name,'de',{numeric:true}));
+    const picked=[...form.files.files];
+    const fresh=picked.filter(f=>AUDIO_RX.test(f.name)).sort((a,b)=>a.name.localeCompare(b.name,'de',{numeric:true}));
+    if(picked.length&&!fresh.length)toast('Darin waren keine Audiodateien (mp3, m4a, m4b, wav …).');
     for(const f of fresh){const id=uid();await putFile(id,f);editing.files.push(id);editing.names.push(f.name)}
     if(fresh.length&&navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
     for(const id of editing.removed){try{await delFile(id)}catch(e){}}
@@ -1137,7 +1141,6 @@ $('themeList').addEventListener('click',e=>{const b=e.target.closest('button[dat
 applyTheme(theme);renderDayToggle();
 
 /* Ganze Ordner und ZIP-Dateien einlesen */
-const AUDIO_RX=/\.(mp3|m4a|m4b|aac|wav|ogg|opus|flac)$/i;
 function batchState(t){$('batchState').textContent=t}
 function groupName(path,fallback){
   const parts=String(path).split('/').filter(Boolean);
@@ -1190,6 +1193,7 @@ function loadJSZip(){
 $('zipBtn').onclick=()=>$('zipInput').click();
 $('zipInput').addEventListener('change',async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(!/\.zip$/i.test(f.name)){batchState('Das ist keine ZIP-Datei.');return}
   batchState('Öffne die ZIP-Datei …');
   let JSZip;
   try{JSZip=await loadJSZip()}catch(err){batchState('Das ZIP-Werkzeug konnte nicht geladen werden (keine Internetverbindung?).');return}
