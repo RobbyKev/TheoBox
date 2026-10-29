@@ -319,6 +319,7 @@ body.sky .moon{opacity:.85}
 .sname{font-family:"Fredoka","Nunito",sans-serif;font-weight:700;font-size:clamp(26px,7vw,36px);letter-spacing:1px;color:#fff;
   text-shadow:0 3px 10px rgba(0,0,0,.35);opacity:0;animation:nameIn .6s ease .9s forwards}
 @keyframes nameIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.theoFallback{font-size:clamp(54px,14vw,86px);line-height:1;animation:theoFloat 3.4s ease-in-out 1s infinite}
 .theo{width:92%;height:92%;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(0,0,0,.28));
   transform:translateY(6%);animation:theoFloat 3.4s ease-in-out 1s infinite}
 @keyframes theoFloat{0%,100%{transform:translateY(6%) rotate(0)}50%{transform:translateY(3.5%) rotate(-1.2deg)}}
@@ -398,7 +399,8 @@ body.sky .moon{opacity:.85}
 <div id="splash" aria-hidden="true">
   <div class="sstage">
     <div class="sbox">
-      <img class="theo" src="theo.png" alt="" decoding="async">
+      <img class="theo" src="theo.png" alt="" decoding="async"
+           onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span class=&quot;theoFallback&quot;>🐾</span>')">
     </div>
   </div>
   <div class="sname">TheoBox</div>
@@ -519,6 +521,8 @@ body.sky .moon{opacity:.85}
     <button type="button" id="doneBtn">✓ Fertig</button>
     <button type="button" id="splashBtn"></button>
     <button type="button" id="soundBtn"></button>
+    <button type="button" id="autoSleepBtn"></button>
+    <button type="button" id="flipBtn"></button>
     <button type="button" id="spModeBtn"></button>
     <button type="button" id="spBtn">Mit Spotify verbinden</button>
     <p id="spState"></p>
@@ -833,6 +837,8 @@ async function playTile(t,index){
     location.href=t.url;return;
   }
   if(t.kind==='spotify'){
+    const ae=spotEmbed(t.url);
+    if(ae&&ae.type==='artist'&&spLogged()){openArtistList(t);return}
     if(t.openApp||spMode()==='app'){openInApp(t);return}
     if(!spLogged()){openSpotify(t);return}
     const e=spotEmbed(t.url);
@@ -860,6 +866,7 @@ async function playTile(t,index){
     if(start>2)audio.addEventListener('loadedmetadata',()=>{try{audio.currentTime=start}catch(e){}},{once:true});
   }
   await startAudio();
+  armAutoSleep();
   renderPlayer();renderGrid();setMedia();
 }
 async function startAudio(){
@@ -1537,6 +1544,7 @@ async function spPlay(t,opts={}){
     const body=opts.uri?{uris:[opts.uri]}:(e.type==='track'||e.type==='episode')?{uris:[`spotify:${e.type}:${e.id}`]}:{context_uri:`spotify:${e.type}:${e.id}`};
     if(opts.pos)body.position_ms=opts.pos;
     await sp('/me/player/play?device_id='+encodeURIComponent(dev.id),{method:'PUT',body:JSON.stringify(body)});
+    armAutoSleep();
     setTimeout(spPoll,900);setTimeout(spPoll,2500);
   }catch(err){spErr(err,t,opts)}
 }
@@ -1588,6 +1596,39 @@ async function openDevicePicker(){
       try{await sp('/me/player',{method:'PUT',body:JSON.stringify({device_ids:[b.dataset.id],play:true})});setTimeout(spPoll,1000)}catch(e){spErr(e)}
     };
   }catch(e){closeSpotify();spErr(e)}
+}
+async function openArtistList(t){
+  const e=spotEmbed(t.url);if(!e)return;
+  if(spotId===t.id){closeSpotify();return}
+  if(spotId)closeSpotify();
+  openSheet(t.emoji+' '+t.name,`https://open.spotify.com/artist/${e.id}`);
+  spotId=t.id;renderGrid();
+  $('sFrame').innerHTML='<p class="slist-msg">Lädt Alben …</p>';
+  try{
+    let all=[];
+    try{all=await spAlbums(e.id,'album,single,compilation')}catch(err){}
+    if(all.length<5){
+      let name='';try{name=((await sp('/artists/'+e.id))||{}).name||''}catch(err){}
+      if(name){const more=await spSearchAlbums(name,e.id);const seen=new Set(all.map(x=>x.id));more.forEach(a=>{if(!seen.has(a.id)){seen.add(a.id);all.push(a)}})}
+    }
+    if(!all.length)throw new Error('leer');
+    const seenName=new Set();
+    all=all.filter(a=>{const k=String(a.name).toLowerCase();if(seenName.has(k))return false;seenName.add(k);return true})
+           .sort((a,b)=>String(a.release_date).localeCompare(String(b.release_date)));
+    $('sFrame').innerHTML='<div class="slist">'+all.map(a=>{
+      const im=(a.images&&(a.images[a.images.length-1]||a.images[0]))||{};
+      return `<button type="button" class="ep" data-alb="${esc(a.id)}">${im.url?`<img src="${esc(im.url)}" alt="" loading="lazy">`:''}<span class="tx"><span class="t">${esc(a.name)}</span><span class="m">${esc(String(a.release_date||'').slice(0,4))}${a.total_tracks?' · '+a.total_tracks+' Titel':''}</span></span></button>`;
+    }).join('')+`</div><p class="slist-msg">${all.length} Alben</p>`;
+    $('sFrame').onclick=ev=>{
+      const b=ev.target.closest('[data-alb]');if(!b)return;
+      const alb={id:uid(),name:t.name,emoji:t.emoji,color:t.color,kind:'spotify',url:`https://open.spotify.com/album/${b.dataset.alb}`,cover:'',img:'',files:[],names:[],parent:null};
+      closeSpotify();
+      if(t.openApp||spMode()==='app')openInApp(alb);else spPlay(alb);
+    };
+  }catch(err){
+    closeSpotify();
+    if(t.openApp||spMode()==='app')openInApp(t);else spPlay(t);
+  }
 }
 const fmtDate=d=>{const m=String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}.${m[2]}.${m[1]}`:(d||'')};
 async function openShowList(t){
@@ -1667,6 +1708,46 @@ async function sleepFire(){
   }catch(e){}
   toast('Gute Nacht. Der Einschlaf-Timer hat gestoppt.');
 }
+/* Automatik: Timer startet bei jeder Wiedergabe von selbst */
+const AUTO_STEPS=[0,30,45,60];
+function autoSleepMin(){return loadJSON('hoerbox.autosleep',0)}
+function renderAutoSleep(){const m=autoSleepMin();$('autoSleepBtn').textContent='Einschlaf-Automatik: '+(m?m+' Min':'aus')}
+$('autoSleepBtn').onclick=()=>{const m=autoSleepMin();saveJSON('hoerbox.autosleep',AUTO_STEPS[(AUTO_STEPS.indexOf(m)+1)%AUTO_STEPS.length]);renderAutoSleep()};
+renderAutoSleep();
+function armAutoSleep(){const m=autoSleepMin();if(m&&!sleepUntil)setSleep(m)}
+
+/* Handy umdrehen beendet die Wiedergabe */
+let flipSince=0,flipBound=false;
+function flipOn(){return loadJSON('hoerbox.flip',false)===true}
+function renderFlip(){$('flipBtn').textContent='Umdrehen stoppt: '+(flipOn()?'an':'aus')}
+function onMotion(ev){
+  const a=ev.accelerationIncludingGravity;if(!a||a.z==null)return;
+  const playing=(cur&&!audio.paused)||(spNow&&spNow.state&&spNow.state.is_playing);
+  if(!playing){flipSince=0;return}
+  if(a.z<-7){
+    if(!flipSince)flipSince=Date.now();
+    else if(Date.now()-flipSince>2500){flipSince=0;sleepFire()}
+  }else flipSince=0;
+}
+async function bindMotion(){
+  if(flipBound)return true;
+  try{
+    if(typeof DeviceMotionEvent!=='undefined'&&DeviceMotionEvent.requestPermission){
+      const res=await DeviceMotionEvent.requestPermission();
+      if(res!=='granted')return false;
+    }
+    window.addEventListener('devicemotion',onMotion);flipBound=true;return true;
+  }catch(e){return false}
+}
+$('flipBtn').onclick=async()=>{
+  if(flipOn()){saveJSON('hoerbox.flip',false);renderFlip();toast('Umdrehen stoppt nicht mehr.');return}
+  const ok=await bindMotion();
+  if(!ok){toast('Das Gerät erlaubt den Bewegungssensor nicht.');return}
+  saveJSON('hoerbox.flip',true);renderFlip();toast('Leg das Gerät zum Stoppen aufs Display.');
+};
+renderFlip();
+if(flipOn())bindMotion();
+
 $('sleepBtn').onclick=()=>{
   openSheet('Einschlaf-Timer');
   const opts=[15,30,45,60];
